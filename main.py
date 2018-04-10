@@ -52,9 +52,9 @@ def main(args):
 
     #####model
     model = Base_Line(model_params)
-    loss_op = model.loss_listwise
+    score_op = model.score
+    #loss_op = model.loss_listwise
     optimizer = tf.train.AdamOptimizer(learning_rate=model_params.learning_rate)
-    train_op = optimizer.minimize(loss_op)
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
@@ -74,10 +74,23 @@ def main(args):
             batch_ans_l = train_data[3][j*model_params.batch_size:(j+1)*model_params.batch_size]
             batch_p_l = train_data[4][j*model_params.batch_size:(j+1)*model_params.batch_size]
             batch_l_l = train_data[5][j*model_params.batch_size:(j+1)*model_params.batch_size]
-
-            _, loss_train = sess.run([train_op,loss_op],feed_dict={model._ques:batch_ques, model._ans:batch_ans,
-                                         model._ques_len:batch_ques_l, model._ans_len:batch_ans_l,
-                                         model.p_label:batch_p_l, model.l_label: batch_l_l})
+            score_list = []
+            for k in range(model_params.list_size):
+                p_b_ques = batch_ques[:,j,:]
+                p_b_ans = batch_ans[:,j,:]
+                p_b_ques_l = batch_ques_l[:,j,:]
+                p_b_ans_l = batch_ans_l[:,j,:]
+                score = sess.run([score_op],feed_dict={model._ques:p_b_ques, model._ans:p_b_ans,
+                                         model._ques_len:p_b_ques_l, model._ans_len:p_b_ans_l,
+                                         })
+                score_list.append(score)
+            score_list = np.concatenate(score_list,axis=-1)
+            print(score_list.shape)
+            score_list_softmax = tf.nn.softmax(score_list)
+            loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=score_list_softmax,labels=batch_l_l))
+            train_op = optimizer.minimize(loss_op)
+            loss, _ = sess.run([loss_op, train_op])
+        continue
         dev_ques = dev_data[0]
         dev_ans = dev_data[1]
         dev_ques_l = dev_data[2]
