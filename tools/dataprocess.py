@@ -100,7 +100,7 @@ class DataGenerator(object):
 
         return questions, answers, questions_len, answers_len, p_labels, l_labels
 
-    def data_listwise_wo0(self,train_file,answer_file):
+    def data_listwise_clean(self,train_file,answer_file):
         train_f = pickle.load(open(train_file,'r'))
         answer_f = pickle.load(open(answer_file,'r'))
         train_size = len(train_f)
@@ -161,7 +161,8 @@ class DataGenerator(object):
 
         return questions, answers, questions_len, answers_len, p_labels, l_labels
 
-    def test_listwise(self,test_file):
+    def test_listwise_clean(self,test_file,padding=False):
+        list_size = 30
         test_f = pickle.load(open(test_file,'r'))
         test_size = len(test_f)
         question, answer, label = zip(*test_f)
@@ -177,33 +178,50 @@ class DataGenerator(object):
         questions_len = []
         answers_len = []
         labels = []
+        answers_size = []
         for k,v in test_dic.items():
             ques, ans, ques_len, ans_len, label = zip(*v)
+            if(np.sum(label)==0): continue
             ques = map(lambda x: self.padseq(x,self.params.ques_len),ques)
             ans = map(lambda x: self.padseq(x,self.params.ans_len),ans)
             ques_len = map(lambda x: self.padseq(x,self.params.ques_len),ques_len)
             ans_len = map(lambda x: self.padseq(x,self.params.ans_len),ans_len)
-            if(np.sum(label)==0): continue
-            questions.append(ques)
-            answers.append(ans)
-            questions_len.append(ques_len)
-            answers_len.append(ans_len)
-            labels.append(label)
+            if(padding):
+                ques_pad = [[0]*self.params.ques_len]*(list_size-len(label))
+                ans_pad = [[0]*self.params.ans_len]*(list_size-len(label))
+                ques.extend(ques_pad)
+                ans.extend(ans_pad)
+                ques_len.extend(ques_pad)
+                ans_len.extend(ans_pad)
+                label_pad = [0]*(list_size-len(label))
+                label = list(label)
+                label.extend(label_pad)
+                answer_size = [1]*len(label)+[0]*(list_size-len(label))
+                answers_size.append(answer_size)
+            questions.append(np.array(ques))
+            answers.append(np.array(ans))
+            questions_len.append(np.array(ques_len))
+            answers_len.append(np.array(ans_len))
+            labels.append(np.array(label))
         questions = np.array(questions)
         answers = np.array(answers)
         labels = np.array(labels)
         questions_len = np.array(questions_len)
         answers_len = np.array(answers_len)
+        answers_size = np.array(answers_size)
+        #print np.array(questions[100]).shape
         print "questions: ",questions.shape
         print "questions_len: ",questions_len.shape
         print "answers: ",answers.shape
         print "answers_len: ",answers_len.shape
         print "labels: ",labels.shape
+        print "answers_size: ",answers_size.shape
 
-        return questions, questions_len, answers, answers_len, labels
+        return (questions, answers, questions_len, answers_len, labels, answers_size) if padding else \
+                (questions, answers, questions_len, answers_len, labels)
 
 def evaluate_map_mrr(pred,label):
-    assert len(pred)==len(label), "Invalid Input!"
+    assert len(pred)==len(label), "Invalid Input! pred:%s label:%s" % (len(pred),len(label))
     mAp, mrr = 0.0, 0.0
     for i in range(len(pred)):
         count = 0.0
@@ -223,14 +241,33 @@ def evaluate_map_mrr(pred,label):
 
     return mAp, mrr
 
+def evaluate_score(sess,model,dev_data):
+    dev_ques = dev_data[0]
+    dev_ans = dev_data[1]
+    dev_ques_l = dev_data[2]
+    dev_ans_l = dev_data[3]
+
+    score_list = []
+    for i in range(len(dev_ques)):
+        score = sess.run(model.logit_score,feed_dict={model._ques:dev_ques[i][np.newaxis,:],
+                                                        model._ans:dev_ans[i][np.newaxis,:],
+                                                        model._ques_len:dev_ques_l[i][np.newaxis,:],
+                                                        model._ans_len:dev_ans_l[i][np.newaxis,:]
+                                                 })
+        score_list.append(score[0])
+    return score_list
+
 if __name__ == '__main__':
     class Param():
         def __init__(self):
             self.ques_len = 10
             self.ans_len = 20
             self.list_size = 15
-    #param = Param()
-    #datag = DataGenerator(param)
+    param = Param()
+    datag = DataGenerator(param)
+    print 'DataGenerator avaliable...'
     #datag.data_listwise('../data/wikiqa/wiki_dev.pkl','../data/wikiqa/wiki_answer_train.pkl')
-    #datag.test_listwise('../data/wikiqa/wiki_test.pkl')
-    print(evaluate_map_mrr(np.array([[0.8,0.1,0.1],[0.4,0.3,0.3]]),np.array([[0,0,1],[0,0,1]])))
+    #datag.test_listwise_clean('../data/wikiqa/wiki_test.pkl')
+    datag.test_listwise_clean('../data/wikiqa/wiki_dev.pkl')
+    #datag.test_listwise('../data/wikiqa/wiki_train.pkl')
+    #print(evaluate_map_mrr(np.array([[0.8,0.1,0.1],[0.4,0.3,0.3]]),np.array([[0,0,1],[0,0,1]])))

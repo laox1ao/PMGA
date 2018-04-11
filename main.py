@@ -9,7 +9,7 @@ import argparse
 import random
 from model.base_line import Base_Line
 from tools.dataprocess import DataGenerator as DG
-from tools.dataprocess import evaluate_map_mrr
+from tools.dataprocess import evaluate_map_mrr, evaluate_score
 import tensorflow as tf
 #from model.myModel import _Model
 
@@ -42,79 +42,76 @@ def main(args):
 
     #####data
     print("train_data:")
-    train_data = dg.data_listwise_wo0(train_file,answer_file)
+    train_data = dg.data_listwise_clean(train_file,answer_file)
     print("dev_data:")
-    dev_data = dg.data_listwise_wo0(dev_file,answer_file)
+    dev_data = dg.test_listwise_clean(dev_file)
     print("test_data:")
-    test_data = dg.test_listwise(test_file)
+    test_data = dg.test_listwise_clean(test_file)
 
     train_steps = len(train_data)/model_params.batch_size+1
 
     #####model
     model = Base_Line(model_params)
-    score_op = model.score
+    model._build_base_line_listwise()
+    #score_op = model.score
     #loss_op = model.loss_listwise
-    optimizer = tf.train.AdamOptimizer(learning_rate=model_params.learning_rate)
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.Session(config=config)
-    sess.run(tf.global_variables_initializer())
 
     best_map, best_mrr = 0.0, 0.0
     best_epoch = 0
 
+    loss_op = model.loss_listwise
+    optimizer = tf.train.AdamOptimizer(learning_rate=model_params.learning_rate)
+    train_op = optimizer.minimize(loss_op)
+    sess.run(tf.global_variables_initializer())
     for i in range(1,model_params.epochs+1):
         print("===================================Epoch %s================================" % i)
-        map(np.random.shuffle,train_data)
+        train_data_ = zip(*train_data)
+        np.random.shuffle(train_data_)
+        train_data = map(np.array,zip(*train_data_))
+        loss_e = 0.0
         for j in range(train_steps):
-            batch_ques = train_data[0][j*model_params.batch_size:(j+1)*model_params.batch_size]
-            batch_ans = train_data[1][j*model_params.batch_size:(j+1)*model_params.batch_size]
-            batch_ques_l = train_data[2][j*model_params.batch_size:(j+1)*model_params.batch_size]
-            batch_ans_l = train_data[3][j*model_params.batch_size:(j+1)*model_params.batch_size]
-            batch_p_l = train_data[4][j*model_params.batch_size:(j+1)*model_params.batch_size]
-            batch_l_l = train_data[5][j*model_params.batch_size:(j+1)*model_params.batch_size]
-            score_list = []
-            for k in range(model_params.list_size):
-                p_b_ques = batch_ques[:,j,:]
-                p_b_ans = batch_ans[:,j,:]
-                p_b_ques_l = batch_ques_l[:,j,:]
-                p_b_ans_l = batch_ans_l[:,j,:]
-                score = sess.run([score_op],feed_dict={model._ques:p_b_ques, model._ans:p_b_ans,
-                                         model._ques_len:p_b_ques_l, model._ans_len:p_b_ans_l,
-                                         })
-                score_list.append(score)
-            score_list = np.concatenate(score_list,axis=-1)
-            print(score_list.shape)
-            score_list_softmax = tf.nn.softmax(score_list)
-            loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=score_list_softmax,labels=batch_l_l))
-            train_op = optimizer.minimize(loss_op)
-            loss, _ = sess.run([loss_op, train_op])
-        continue
-        dev_ques = dev_data[0]
-        dev_ans = dev_data[1]
-        dev_ques_l = dev_data[2]
-        dev_ans_l = dev_data[3]
-        dev_p_l = dev_data[4]
-        dev_l_l = dev_data[5]
+            batch_ques = train_data[0][j*model_params.batch_size:(j+1)*model_params.batch_size,:,:]
+            batch_ans = train_data[1][j*model_params.batch_size:(j+1)*model_params.batch_size,:,:]
+            batch_ques_l = train_data[2][j*model_params.batch_size:(j+1)*model_params.batch_size,:,:]
+            batch_ans_l = train_data[3][j*model_params.batch_size:(j+1)*model_params.batch_size,:,:]
+            #batch_p_l = train_data[4][j*model_params.batch_size:(j+1)*model_params.batch_size,:,:]
+            batch_l_l = train_data[5][j*model_params.batch_size:(j+1)*model_params.batch_size,:]
 
-        loss, score = sess.run([loss_op,model.score],feed_dict={model._ques:dev_ques, model._ans:dev_ans,
-                                                                model._ques_len:dev_ques_l, model._ans_len:dev_ans_l,
-                                                                model.p_label:dev_p_l, model.l_label:dev_l_l})
-        score = score[:,:,0]
-        print(score.shape)
-        print(dev_p_l.shape)
+            loss_b, _ = sess.run([loss_op,train_op], feed_dict={model._ques:batch_ques,
+                                                              model._ans:batch_ans,
+                                                              model._ques_len:batch_ques_l,
+                                                              model._ans_len:batch_ans_l,
+                                                              model.l_label:batch_l_l
+                                                              })
+            loss_e += loss_b
+        loss_e /= train_steps
 
-        mAp, mRr = evaluate_map_mrr(score,dev_p_l)
-        if(mAp>best_map):
-            best_map = mAp
-            best_mrr = mRr
+        dev_label = dev_data[4]
+        test_label = test_data[4]
+
+        score_list = evaluate_score(sess,model,dev_data)
+        dev_mAp, dev_mRr = evaluate_map_mrr(score_list,dev_label)
+
+        score_list = evaluate_score(sess,model,test_data)
+        test_mAp, test_mRr = evaluate_map_mrr(score_list,test_label)
+
+        if(dev_mAp>best_map):
+            best_dev_map = best_map = dev_mAp
+            best_dev_mrr = dev_mRr
+            best_test_map = test_mAp
+            best_test_mrr = test_mRr
             best_epoch = i
 
-        print("Loss at epoch %s: %.4f\n" % (i,loss_train))
-        print("MAP on dev_data: %.4f\n" % mAp,"MRR on dev_data: %.4f\n" % mRr)
+        print("Loss at epoch %s: %.4f\n" % (i,loss_e))
+        print("MAP on dev_data: %.4f,\t\t" %  dev_mAp,"MRR on dev_data: %.4f\n" % dev_mRr)
+        print("MAP on test_data: %.4f,\t\t" % test_mAp,"MRR on test_data: %.4f\n" % test_mRr)
 
-    print("===============================\nBest MAP: %.4f\nBest MRR: %.4f\nat epoch %s" % (best_map,best_mrr,best_epoch))
+    print("===============================\non dev Best MAP: %.4f\t\tBest MRR: %.4f" % (best_dev_map,best_dev_mrr))
+    print("===============================\non test Best MAP: %.4f\t\tBest MRR: %.4f\nat epoch %s" % (best_test_map,best_test_mrr,best_epoch))
 
 class Model_Param():
     def __init__(self,args):
