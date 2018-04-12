@@ -103,7 +103,7 @@ class Base_Line():
             with tf.variable_scope('embedding_layer') as embedding_l:
                 weights = np.load(self.embedding_file)
                 weights[0] = np.zeros((weights.shape[1]))
-                embeddings = tf.Variable(weights,dtype=tf.float32)
+                embeddings = tf.Variable(weights,dtype=tf.float32,trainable=False)
 
                 ques_emb = tf.nn.embedding_lookup(embeddings,self._ques)
                 ans_emb = tf.nn.embedding_lookup(embeddings,self._ans)
@@ -128,8 +128,8 @@ class Base_Line():
                 ans_align = self.getAlign(ques_h,ans_att_matrix,self._ans_filter_len)
                 print('ques_align:',ques_align.shape)
 
-                ques_aligned = tf.multiply(tf.multiply(ques_align,self._ques_align_len),ques_h)
-                ans_aligned = tf.multiply(tf.multiply(ans_align,self._ans_align_len),ans_h)
+                ques_aligned = tf.multiply(tf.multiply(ques_align,ques_h),self._ques_align_len)
+                ans_aligned = tf.multiply(tf.multiply(ans_align,ans_h),self._ans_align_len)
             with tf.variable_scope('cnn_feature') as cnn_l:
                 self.cnn_ques = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',activation=tf.nn.relu,name='q_conv_'+str(i)) for i in range(1,6)]
                 self.cnn_ans = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',activation=tf.nn.relu,name='a_conv_'+str(i)) for i in range(1,6)]
@@ -140,7 +140,8 @@ class Base_Line():
                     conv1dfn = self.cnn_ques if tf.equal(signal,tf.constant(1)) is not None else self.cnn_ans
                     sent_cnn = tf.concat([sent_cnn,self.conv1d_listwise(conv1dfn,sent_aligned[:,step,:,:],True)],1)
                     return step+1,sent_cnn,sent_aligned,signal
-                ques_cnn, ans_cnn = tf.zeros([tf.shape(ques_aligned)[0],1,self.hidden_dim*5],dtype=tf.float32), tf.zeros([tf.shape(ques_aligned)[0],1,self.hidden_dim*5],dtype=tf.float32)
+                ques_cnn = tf.zeros([tf.shape(ques_aligned)[0],1,self.hidden_dim*len(self.cnn_ques)],dtype=tf.float32)
+                ans_cnn = tf.zeros([tf.shape(ques_aligned)[0],1,self.hidden_dim*len(self.cnn_ans)],dtype=tf.float32)
                 step = tf.constant(0)
                 signal = tf.constant(1)
                 _,ques_cnn,_,_ = tf.while_loop(cond=lambda step,*_: step<tf.shape(ques_aligned)[1],
@@ -170,7 +171,7 @@ class Base_Line():
                 print('logit_score:',self.logit_score.shape)
             with tf.variable_scope('loss') as loss_l:
                 #self.loss_pointwise = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=self.p_label,logits=tf.squeeze(self.score,-1)))
-                self.loss_listwise = tf.reduce_mean(tf.multiply(self.l_label,tf.log(tf.clip_by_value(self.l_label,1e-5,1))-self.logit_score))
+                self.loss_listwise = tf.reduce_mean(self.l_label*(tf.log(tf.clip_by_value(self.l_label,1e-10,1.0))-self.logit_score))
 
                 #self.total_loss = self.loss_pointwise + self.loss_listwise
 

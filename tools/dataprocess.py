@@ -152,14 +152,19 @@ class DataGenerator(object):
         p_labels = np.array(p_labels)
         l_labels = np.array(l_labels)
 
+        #print 'q',questions[99]
         print 'questions:',questions.shape
+        #print 'a',answers[99]
         print 'answers:',answers.shape
+        #print 'q_l',questions_len[99]
         print 'questions_len:',questions_len.shape
+        #print 'a_l',answers_len[99]
         print 'answers_len',answers_len.shape
-        print 'p_labels:',p_labels.shape
+        #print 'p_labels:',p_labels.shape
         print 'l_labels:',l_labels.shape
+        print np.sum(l_labels)
 
-        return questions, answers, questions_len, answers_len, p_labels, l_labels
+        return questions, answers, questions_len, answers_len, l_labels
 
     def test_listwise_clean(self,test_file,padding=False):
         list_size = 30
@@ -266,8 +271,8 @@ if __name__ == '__main__':
     param = Param()
     datag = DataGenerator(param)
     print 'DataGenerator avaliable...'
-    #datag.data_listwise('../data/wikiqa/wiki_dev.pkl','../data/wikiqa/wiki_answer_train.pkl')
+    datag.data_listwise_clean('../data/wikiqa/wiki_train.pkl','../data/wikiqa/wiki_answer_train.pkl')
     #datag.test_listwise_clean('../data/wikiqa/wiki_test.pkl')
-    datag.test_listwise_clean('../data/wikiqa/wiki_dev.pkl')
+    #datag.test_listwise_clean('../data/wikiqa/wiki_dev.pkl')
     #datag.test_listwise('../data/wikiqa/wiki_train.pkl')
     #print(evaluate_map_mrr(np.array([[0.8,0.1,0.1],[0.4,0.3,0.3]]),np.array([[0,0,1],[0,0,1]])))
