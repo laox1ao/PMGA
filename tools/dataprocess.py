@@ -6,6 +6,8 @@ import numpy as np
 from collections import namedtuple
 import pickle
 import random
+random.seed(1337)
+np.random.seed(1337)
 
 class DataGenerator(object):
     def __init__(self,params):
@@ -40,7 +42,7 @@ class DataGenerator(object):
 
         return question, question_len, answer, answer_len, label
 
-    def data_listwise(self,train_file,answer_file):
+    def data_listwise_clean_internal_sample(self,train_file,answer_file):
         train_f = pickle.load(open(train_file,'r'))
         answer_f = pickle.load(open(answer_file,'r'))
         train_size = len(train_f)
@@ -68,11 +70,16 @@ class DataGenerator(object):
                 train_dic[k] = [v[i] for i in range(len(v)) if i not in filtered_false_sample]
             else:
                 pad_size = list_size - len(v)
-                pad_answer = random.sample(answer_f.values(),pad_size)
+                false_sample = [i for i in range(len(v)) if v[i][-1]==0]*pad_size
+                if(len(false_sample)):
+                    pad_answer = [v[i][1] for i in random.sample(false_sample,pad_size)]
+                else:
+                    pad_answer = random.sample(answer_f.values(),pad_size)
                 pad_answer_len = [[1 for _ in range(len(x))] for x in pad_answer]
                 pad_sample = [[v[0][0],pad_answer[i],v[0][2],pad_answer_len[i],0] for i in range(len(pad_answer))]
                 train_dic[k].extend(pad_sample)
             ques, ans, ques_len, ans_len, p_label = zip(*train_dic[k])
+            if(np.sum(p_label)==0): continue
             ques = map(lambda x: self.padseq(x,self.params.ques_len),ques)
             ans = map(lambda x: self.padseq(x,self.params.ans_len),ans)
             ques_len = map(lambda x: self.padseq(x,self.params.ques_len),ques_len)
@@ -257,7 +264,8 @@ def evaluate_score(sess,model,dev_data):
         score = sess.run(model.logit_score,feed_dict={model._ques:dev_ques[i][np.newaxis,:],
                                                         model._ans:dev_ans[i][np.newaxis,:],
                                                         model._ques_len:dev_ques_l[i][np.newaxis,:],
-                                                        model._ans_len:dev_ans_l[i][np.newaxis,:]
+                                                        model._ans_len:dev_ans_l[i][np.newaxis,:],
+                                                      model.is_train:False
                                                  })
         score_list.append(score[0])
     return score_list
@@ -271,7 +279,8 @@ if __name__ == '__main__':
     param = Param()
     datag = DataGenerator(param)
     print 'DataGenerator avaliable...'
-    datag.data_listwise_clean('../data/wikiqa/wiki_train.pkl','../data/wikiqa/wiki_answer_train.pkl')
+    datag.data_listwise_clean_internal_sample('../data/wikiqa/wiki_train.pkl','../data/wikiqa/wiki_answer_train.pkl')
+    #datag.data_listwise_clean('../data/wikiqa/wiki_train.pkl','../data/wikiqa/wiki_answer_train.pkl')
     #datag.test_listwise_clean('../data/wikiqa/wiki_test.pkl')
     #datag.test_listwise_clean('../data/wikiqa/wiki_dev.pkl')
     #datag.test_listwise('../data/wikiqa/wiki_train.pkl')

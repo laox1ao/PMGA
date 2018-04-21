@@ -6,6 +6,7 @@ import random
 from collections import namedtuple
 import pickle
 random.seed(1337)
+np.random.seed(1337)
 
 ModelParam = namedtuple("ModelParam","hidden_dim,enc_timesteps,dec_timesteps,batch_size,random_size,k_value_ques,k_value_ans,lr")
 
@@ -85,7 +86,7 @@ class DataGenerator(object):
         #return pad_sequences(data, maxlen=len, padding='post', truncating='post', value=0)
         return map(lambda x: _pad(x,lens),data)
     
-    def wikiQaGenerate(self,filename,flag="basic"):
+    def wikiQaGenerate(self,filename,flag="basic",verbose=False):
         data = pickle.load(open(filename,'r'))
         question_dic = {}
         question = list()
@@ -142,11 +143,14 @@ class DataGenerator(object):
         answer_len = np.array(answer_len)
         answer_size = np.array(answer_size)
     
-        print question.shape
-        print question_len.shape
-        print answer.shape
-        print answer_len.shape
-        print label.shape
+        if(verbose):
+            print question[23]
+            print question.shape
+            print answer[23]
+            print question_len.shape
+            print answer.shape
+            print answer_len.shape
+            print label.shape
     
         if flag == "size":
             return question,answer,label,question_len,answer_len,answer_size
@@ -250,6 +254,9 @@ if __name__ == '__main__':
         enc_timesteps = 20
         dec_timesteps = 30
         random_size = 15
+        list_size = 15
+        ans_len = 30
+        ques_len = 20
     m_p = M_P()
     dg = DataGenerator(1,m_p,'../data/wikiqa/wiki_answer_train.pkl')
     dg.wikiQaGenerate('../data/wikiqa/wiki_train.pkl')
