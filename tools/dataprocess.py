@@ -261,10 +261,10 @@ def evaluate_score(sess,model,dev_data):
 
     score_list = []
     for i in range(len(dev_ques)):
-        score = sess.run(model.logit_score,feed_dict={model._ques:dev_ques[i][np.newaxis,:],
-                                                        model._ans:dev_ans[i][np.newaxis,:],
-                                                        model._ques_len:dev_ques_l[i][np.newaxis,:],
-                                                        model._ans_len:dev_ans_l[i][np.newaxis,:],
+        score = sess.run(model.logit_score,feed_dict={model.r_ques:dev_ques[i][np.newaxis,:],
+                                                        model.r_ans:dev_ans[i][np.newaxis,:],
+                                                        model.r_ques_len:dev_ques_l[i][np.newaxis,:],
+                                                        model.r_ans_len:dev_ans_l[i][np.newaxis,:],
                                                       model.is_train:False
                                                  })
         score_list.append(score[0])

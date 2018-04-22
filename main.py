@@ -66,10 +66,14 @@ def main(args):
             model_type = 'baseline'
             model = Base_Line(model_params)
             model._build_base_line_listwise()
-        elif model_params.model == 'm':
+        elif model_params.model == 'syn':
             model_type = 'syn_ext'
             model = My_Model(model_params)
             model._build_syn_ext_listwise()
+        elif model_params.model == 'att':
+            model_type = 'att_ext'
+            model = My_Model(model_params)
+            model._build_att_ext_listwise()
 
         dg = DG(model_params)
         dg_ = d_p.DataGenerator(1,model_params,'./data/wikiqa/wiki_answer_train.pkl')
@@ -106,7 +110,8 @@ def main(args):
             last_dev_mAp = 0.0
             sess.run(tf.global_variables_initializer())
             for i in range(1,model_params.epochs+1):
-                print("===================================CV %s Epoch %s================================" % (c,i))
+                c_time = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime())
+                print("===================================CV %s Epoch %s================================" % (c,i),c_time)
                 print("train_data:")
                 #train_data = dg.data_listwise_clean(train_file,answer_file)
                 #train_data = dg.data_listwise_clean_internal_sample(train_file,answer_file)
@@ -125,10 +130,10 @@ def main(args):
                     #batch_p_l = train_data[4][j*model_params.batch_size:(j+1)*model_params.batch_size,:,:]
                     batch_l_l = train_data[4][j*model_params.batch_size:(j+1)*model_params.batch_size,:]
 
-                    loss_b, _ = sess.run([loss_op,train_op], feed_dict={model._ques:batch_ques,
-                                                                      model._ans:batch_ans,
-                                                                      model._ques_len:batch_ques_l,
-                                                                      model._ans_len:batch_ans_l,
+                    loss_b, _ = sess.run([loss_op,train_op], feed_dict={model.r_ques:batch_ques,
+                                                                      model.r_ans:batch_ans,
+                                                                      model.r_ques_len:batch_ques_l,
+                                                                      model.r_ans_len:batch_ans_l,
                                                                       model.l_label:batch_l_l,
                                                                         model.is_train:True,
                                                                         learning_rate_op:learning_rate
