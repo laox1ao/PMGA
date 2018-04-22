@@ -131,15 +131,17 @@ class My_Model():
                 ques_tan = tf.tanh(ques_tan)
                 ques_h = tf.multiply(ques_sig,ques_tan)
 
-                ans_sig = tf.sigmoid(sig_den(ans_emb))
-                ans_tan = tf.tanh(tan_den(ans_emb))
+                ans_sig = sig_den(ans_emb)
+                ans_sig = tf.sigmoid(ans_sig)
+                ans_tan = tan_den(ans_emb)
+                ans_tan = tf.tanh(ans_tan)
                 ans_h = tf.multiply(ans_sig,ans_tan)
             with tf.variable_scope('synatic_extract') as syn_ext_l:
                 q_syn_extractor = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',activation=tf.nn.relu,name='q_extrator_'+str(i)) for i in range(2,6)]
                 a_syn_extractor = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',activation=tf.nn.relu,name='q_extrator_'+str(i)) for i in range(2,6)]
 
-                ques_syn = self.convXd_listwise(q_syn_extractor,ques_emb,self._ques_align_len,1)
-                ans_syn = self.convXd_listwise(a_syn_extractor,ans_emb,self._ans_align_len,1)
+                ques_syn = self.convXd_listwise(q_syn_extractor,ques_h,self._ques_align_len,1)
+                ans_syn = self.convXd_listwise(a_syn_extractor,ans_h,self._ans_align_len,1)
 
                 q_a_syn = tf.concat([ques_syn,ans_syn],axis=-1)
 
