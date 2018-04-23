@@ -217,8 +217,10 @@ class My_Model():
             self._ques_filter_len = tf.tile(tf.expand_dims(self.r_ans_len,2),[1,1,self.ques_len,1])
             self._ans_filter_len = tf.tile(tf.expand_dims(self.r_ques_len,2),[1,1,self.ans_len,1])
 
-            self._ques_align_len = tf.tile(tf.expand_dims(self.r_ques_len,3),[1,1,1,self.hidden_dim])
-            self._ans_align_len = tf.tile(tf.expand_dims(self.r_ans_len,3),[1,1,1,self.hidden_dim])
+            self._ques_align_len = tf.expand_dims(self.r_ques_len,3)
+            self._ans_align_len = tf.expand_dims(self.r_ans_len,3)
+            #self._ques_align_len = tf.tile(tf.expand_dims(self.r_ques_len,3),[1,1,1,self.hidden_dim])
+            #self._ans_align_len = tf.tile(tf.expand_dims(self.r_ans_len,3),[1,1,1,self.hidden_dim])
 
             #self.p_label = tf.placeholder(tf.float32,[None,None])
             self.l_label = tf.placeholder(tf.float32,[None,None])
@@ -229,8 +231,8 @@ class My_Model():
             self._ans = tf.reshape(self.r_ans,shape=(-1,self.ans_len))
             self._ques_filter_len = tf.reshape(self._ques_filter_len,shape=(-1,self.ques_len,self.ans_len))
             self._ans_filter_len = tf.reshape(self._ans_filter_len,shape=(-1,self.ans_len,self.ques_len))
-            self._ques_align_len = tf.reshape(self._ques_align_len,shape=(-1,self.ques_len,self.hidden_dim))
-            self._ans_align_len = tf.reshape(self._ans_align_len,shape=(-1,self.ans_len,self.hidden_dim))
+            self._ques_align_len = tf.reshape(self._ques_align_len,shape=(-1,self.ques_len,1))
+            self._ans_align_len = tf.reshape(self._ans_align_len,shape=(-1,self.ans_len,1))
 
             self.is_train = tf.placeholder(tf.bool)
 
@@ -266,8 +268,8 @@ class My_Model():
                 ans_att_matrix = self.getAttMat(ans_h,ques_h)
                 ans_att_matrix_copy = tf.expand_dims(ans_att_matrix*self._ans_filter_len,-1)
 
-                ques_att_extractor = [tf.layers.Conv2D(self.hidden_dim,(1,i),padding='same',activation=tf.nn.relu,name='q_att_ext'+str(i)) for i in range(3,4)]
-                ans_att_extractor = [tf.layers.Conv2D(self.hidden_dim,(1,i),padding='same',activation=tf.nn.relu,name='a_att_ext'+str(i)) for i in range(3,4)]
+                ques_att_extractor = [tf.layers.Conv2D(100,(1,i),padding='same',activation=tf.nn.relu,name='q_att_ext'+str(i)) for i in range(3,4)]
+                ans_att_extractor = [tf.layers.Conv2D(100,(1,i),padding='same',activation=tf.nn.relu,name='a_att_ext'+str(i)) for i in range(3,4)]
 
                 ques_att = self.convXd_listwise(ques_att_extractor,ques_att_matrix_copy,tf.expand_dims(self._ques_filter_len,-1),2)
                 ans_att = self.convXd_listwise(ans_att_extractor,ans_att_matrix_copy,tf.expand_dims(self._ans_filter_len,-1),2)
@@ -287,6 +289,7 @@ class My_Model():
 
                 ques_aligned = tf.concat([ques_aligned,ques_att_masked],-1)
                 ans_aligned = tf.concat([ans_aligned,ans_att_masked],-1)
+                print('ques_aligned:',ques_aligned.shape)
 
             with tf.variable_scope('cnn_feature') as cnn_l:
                 self.cnn_ques = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',activation=tf.nn.relu,name='q_conv_'+str(i)) for i in range(1,6)]
@@ -366,5 +369,5 @@ if __name__ == '__main__':
     m_p = Model_Param()
     base_line = My_Model(m_p)
     #base_line._build_my_model_listwise()
-    #base_line._build_syn_ext_listwise()
-    base_line._build_att_ext_listwise()
+    base_line._build_syn_ext_listwise()
+    #base_line._build_att_ext_listwise()
