@@ -22,26 +22,32 @@ import tensorflow as tf
 
 parser = argparse.ArgumentParser(description="QA2018")
 parser.add_argument('-m','--model',type=str,default='b',help="base line model")
-parser.add_argument('-b','--batch_size',type=int,default=3,help="batch size")
+parser.add_argument('-t','--task',type=str,default='wiki',help="task name")
+parser.add_argument('-b','--batch_size',type=int,default=64,help="batch size")
 parser.add_argument('-ls','--list_size',type=int,default=15,help="list-wise size")
 parser.add_argument('-e','--epochs',type=int,default=200,help="train epochs")
 parser.add_argument('-lr','--learning_rate',type=float,default=0.001,help="learning rate")
 parser.add_argument('-hd','--hidden_dim',type=int,default=300,help="hidden dim")
 parser.add_argument('-gid','--gpu_id',type=str,default='0,1',help="gpu id")
-parser.add_argument('-ql','--ques_len',type=int,default=25,help="question length")
-parser.add_argument('-al','--ans_len',type=int,default=90,help="question length")
 parser.add_argument('-cv','--cv',type=int,default=1,help="cv num")
 parser.add_argument('-kp','--keep_prob',type=float,default=0.0,help="keep prob")
 parser.add_argument('-lrdc','--lr_decay',type=float,default=0.99,help="learning rate decay")
 parser.add_argument('-lrsr','--lr_shrink',type=float,default=0.5,help="learning rate shrink")
 parser.add_argument('-opt','--optimizer',type=str,default='adam',help="optimizer")
+parser.add_argument('-pre','--pre_train',type=int,default=1,help="pre-train epochs")
 
 current_path = os.path.abspath(".")
-train_file = current_path+"/data/wikiqa/wiki_train.pkl"
-dev_file = current_path+"/data/wikiqa/wiki_dev.pkl"
-test_file = current_path+"/data/wikiqa/wiki_test.pkl"
-answer_file = current_path+"/data/wikiqa/wiki_answer_train.pkl"
-embedding_file = current_path+"/data/wikiqa/wikiqa_glovec.txt"
+wiki_train_file = current_path+"/data/wikiqa/wiki_train.pkl"
+wiki_dev_file = current_path+"/data/wikiqa/wiki_dev.pkl"
+wiki_test_file = current_path+"/data/wikiqa/wiki_test.pkl"
+wiki_answer_file = current_path+"/data/wikiqa/wiki_answer_train.pkl"
+wiki_embedding_file = current_path+"/data/wikiqa/wikiqa_glovec.txt"
+
+trec_train_file = current_path+"/data/trecqa/trec_train.pkl"
+trec_dev_file = current_path+"/data/trecqa/trec_dev.pkl"
+trec_test_file = current_path+"/data/trecqa/trec_test.pkl"
+trec_answer_file = current_path+"/data/trecqa/trec_answer_train.pkl"
+trec_embedding_file = current_path+"/data/trecqa/trecqa_glovec.txt"
 
 def get_learning_rate(lr,model_params,dev_map,last_dev_map,epoch):
     if epoch<25:
@@ -51,6 +57,11 @@ def get_learning_rate(lr,model_params,dev_map,last_dev_map,epoch):
     else:
         return lr*model_params.lr_shrink
 
+def save_ckpt(saver,sess,global_mark):
+    if(not os.path.exists('check_point/'+global_mark)):
+        os.makedirs('check_point/'+global_mark)
+    filepath = 'check_point/'+global_mark+'/model_weights'
+    saver.save(sess,filepath)
 
 def main(args):
     ave_dev_map, ave_dev_mrr = 0.0, 0.0
@@ -59,6 +70,33 @@ def main(args):
     with tf.variable_scope('cv',reuse=tf.AUTO_REUSE):
         ######model_params
         model_params = Model_Param(args)
+
+        ######task n data
+        if model_params.task == 'wiki':
+            model_params.ques_len = 25
+            model_params.ans_len = 90
+            model_params.random_size=model_params.list_size=15
+            dg = DG(model_params)
+            dg_ = d_p.DataGenerator(1,model_params,'./data/wikiqa/wiki_answer_train.pkl')
+            print("dev_data:")
+            dev_data = dg.test_listwise_clean(wiki_dev_file)
+            print("test_data:")
+            test_data = dg.test_listwise_clean(wiki_test_file)
+            model_params.embedding_file = wiki_embedding_file
+        elif model_params.task == 'trec':
+            model_params.ques_len = 30
+            model_params.ans_len = 70
+            model_params.random_size=model_params.list_size=40
+            dg = DG(model_params)
+            dg_ = d_p.DataGenerator(1,model_params,'./data/trecqa/trec_answer_train.pkl')
+            print("dev_data:")
+            dev_data = dg.test_listwise_clean(trec_dev_file)
+            print("test_data:")
+            test_data = dg.test_listwise_clean(trec_test_file)
+            model_params.embedding_file = trec_embedding_file
+        else:
+            sys.stderr.write("Invalid Task.")
+            return
         model_params.print_param()
 
         #####model
@@ -70,19 +108,24 @@ def main(args):
             model_type = 'syn_ext'
             model = My_Model(model_params)
             model._build_syn_ext_listwise()
+        elif model_params.model == 'syn2':
+            model_type = 'syn_ext2'
+            model = My_Model(model_params)
+            model._build_syn_ext2_listwise()
         elif model_params.model == 'att':
             model_type = 'att_ext'
             model = My_Model(model_params)
             model._build_att_ext_listwise()
+        elif model_params.model == 'thresh':
+            model_type = 'thresh'
+            model = My_Model(model_params)
+            model._build_thresh_listwise()
+        else:
+            print("Invalid Model Type")
+            return
 
-        dg = DG(model_params)
-        dg_ = d_p.DataGenerator(1,model_params,'./data/wikiqa/wiki_answer_train.pkl')
+        global_mark = model_params.task+'_'+model_params.model
         for c in range(args.cv):
-            #####data
-            print("dev_data:")
-            dev_data = dg.test_listwise_clean(dev_file)
-            print("test_data:")
-            test_data = dg.test_listwise_clean(test_file)
 
             #score_op = model.score
             #loss_op = model.loss_listwise
@@ -100,6 +143,7 @@ def main(args):
             learning_rate_op = tf.placeholder(tf.float32)
             learning_rate = model_params.learning_rate
             loss_op = model.loss_listwise
+            saver = tf.train.Saver()
             if(model_params.optimizer=='adam'):
                 optimizer = tf.train.AdamOptimizer(learning_rate_op)
             elif(model_params.optimizer=='adadelta'):
@@ -109,19 +153,24 @@ def main(args):
             train_op = optimizer.minimize(loss_op,global_step=global_step)
             last_dev_mAp = 0.0
             sess.run(tf.global_variables_initializer())
+            dc_flag = False
             for i in range(1,model_params.epochs+1):
                 c_time = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime())
                 print("===================================CV %s Epoch %s================================" % (c,i),c_time)
                 print("train_data:")
                 #train_data = dg.data_listwise_clean(train_file,answer_file)
                 #train_data = dg.data_listwise_clean_internal_sample(train_file,answer_file)
-                train_data = dg_.wikiQaGenerate(train_file)
+                if model_params.task == 'wiki':
+                    train_data = dg_.wikiQaGenerate(wiki_train_file)
+                else:
+                    train_data = dg_.trecQaGenerate(trec_train_file)
                 print("learnig_rate---> %s" % learning_rate)
                 train_data_ = zip(*train_data)
                 np.random.shuffle(train_data_)
                 train_data = map(np.array,zip(*train_data_))
                 train_steps = len(train_data)/model_params.batch_size+1
                 loss_e = 0.0
+                if(i>model_params.pre_train): dc_flag = True
                 for j in range(train_steps):
                     batch_ques = train_data[0][j*model_params.batch_size:(j+1)*model_params.batch_size,:,:]
                     batch_ans = train_data[1][j*model_params.batch_size:(j+1)*model_params.batch_size,:,:]
@@ -136,7 +185,8 @@ def main(args):
                                                                       model.r_ans_len:batch_ans_l,
                                                                       model.l_label:batch_l_l,
                                                                         model.is_train:True,
-                                                                        learning_rate_op:learning_rate
+                                                                        learning_rate_op:learning_rate,
+                                                                        model.dc:dc_flag
                                                                       })
                     current_sam = j*model_params.batch_size+len(batch_ans)
                     total_sam = len(train_data[1])
@@ -144,6 +194,7 @@ def main(args):
                     #print(c_time+'['+'='*20+'] '+' loss: %.8f' % loss_b)
                     loss_e += loss_b
                 loss_e /= train_steps
+                print("Loss at epoch %s: %.4f\n" % (i,loss_e))
 
                 dev_label = dev_data[4]
                 test_label = test_data[4]
@@ -162,12 +213,12 @@ def main(args):
                     dev_test_map = test_mAp
                     dev_test_mrr = test_mRr
                     best_dev_epoch = i
+                    save_ckpt(saver,sess,global_mark)
                 if(test_mAp>best_test_map):
                     best_test_map = test_mAp
                     best_test_mrr = test_mRr
                     best_test_epoch = i
 
-                print("Loss at epoch %s: %.4f\n" % (i,loss_e))
                 print("MAP on dev_data: %.4f,\t\t" %  dev_mAp,"MRR on dev_data: %.4f\n" % dev_mRr)
                 print("MAP on test_data: %.4f,\t\t" % test_mAp,"MRR on test_data: %.4f\n" % test_mRr)
 
@@ -194,23 +245,27 @@ class Model_Param():
     def __init__(self,args):
         self.model = args.model
         self.batch_size = args.batch_size
-        self.list_size = args.list_size
+        self.list_size = 0
         self.epochs = args.epochs
         self.learning_rate = args.learning_rate
         self.hidden_dim = args.hidden_dim
-        self.ques_len = args.ques_len
-        self.ans_len = args.ans_len
-        self.embedding_file = embedding_file
-        self.random_size = args.list_size
+        self.ques_len = 0
+        self.ans_len = 0
+        self.random_size = 0
         self.keep_prob = args.keep_prob
         self.lr_decay = args.lr_decay
         self.lr_shrink = args.lr_shrink
         self.optimizer = args.optimizer
+        self.pre_train = args.pre_train
+        self.task = args.task
+        self.embedding_file = ""
     def print_param(self):
         print("model: ",self.model,
+              "\ntask: ",self.task,
               "\nbatch_size: ",self.batch_size,
               "\nlist_size: ",self.list_size,
               "\nepochs: ",self.epochs,
+              "\npre_train: ",self.pre_train,
               "\nlearning_rate: ",self.learning_rate,
               "\nkeep_prob: ",self.keep_prob,
               "\nhidden_dim: ",self.hidden_dim,

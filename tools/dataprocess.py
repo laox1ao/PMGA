@@ -265,7 +265,8 @@ def evaluate_score(sess,model,dev_data):
                                                         model.r_ans:dev_ans[i][np.newaxis,:],
                                                         model.r_ques_len:dev_ques_l[i][np.newaxis,:],
                                                         model.r_ans_len:dev_ans_l[i][np.newaxis,:],
-                                                      model.is_train:False
+                                                      model.is_train:False,
+                                                      model.dc:True
                                                  })
         score_list.append(score[0])
     return score_list

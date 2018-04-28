@@ -156,7 +156,7 @@ class DataGenerator(object):
             return question,answer,label,question_len,answer_len,answer_size
         return question,answer,question_len,answer_len,label
 
-    def trecQaGenerate(self,filename,flag="basic"):
+    def trecQaGenerate(self,filename,flag="basic",verbose=False):
         data = pickle.load(open(filename,'r'))
         question_dic = {}
         question = list()
@@ -206,8 +206,8 @@ class DataGenerator(object):
     
             ans_length = [[1 for i in range(len(single_ans))] for single_ans in temp_answer]
             answer_len.append(self.pada(ans_length))
-            question_len += [self.padq([length])[0]]
-            question += [self.padq([item["question"][0]])[0]]
+            question_len += [[self.padq([length])[0]]*self.param.list_size]
+            question += [[self.padq([item["question"][0]])[0]]*self.param.list_size]
             answer_size += [[1 for i in range(self.param.random_size) if i < trash_sample] + [0 for i in range(self.param.random_size-trash_sample)] ]
     
         question = np.array(question)
@@ -216,12 +216,15 @@ class DataGenerator(object):
         question_len = np.array(question_len)
         answer_len = np.array(answer_len)
         answer_size = np.array(answer_size)
-        print question.shape
-        print answer.shape
-        print label.shape
+        if(verbose):
+            print question.shape
+            print question_len.shape
+            print answer.shape
+            print answer_len.shape
+            print label.shape
         if flag == "size":
             return question,answer,label,question_len,answer_len,answer_size
-        return question,answer,label,question_len,answer_len
+        return question,answer,question_len,answer_len,label
     
     def EvaluateGenerate(self,filename):
         data = pickle.load(open(filename,'r'))
@@ -258,8 +261,10 @@ if __name__ == '__main__':
         ans_len = 30
         ques_len = 20
     m_p = M_P()
-    dg = DataGenerator(1,m_p,'../data/wikiqa/wiki_answer_train.pkl')
-    dg.wikiQaGenerate('../data/wikiqa/wiki_train.pkl')
+    #dg = DataGenerator(1,m_p,'../data/wikiqa/wiki_answer_train.pkl')
+    #dg.wikiQaGenerate('../data/wikiqa/wiki_train.pkl')
+    dg = DataGenerator(1,m_p,'../data/trecqa/trec_answer_train.pkl')
+    dg.trecQaGenerate('../data/trecqa/trec_train.pkl',verbose=True)
     #dg.EvaluateGenerate('../data/wikiqa/wiki_dev.pkl')
 
 

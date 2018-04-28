@@ -86,23 +86,29 @@ class Base_Line():
 
     def _build_base_line_listwise(self):
         with tf.variable_scope('inputs') as inputs:
-            self._ques = tf.placeholder(tf.int32,[None,None,self.ques_len],name='ques_point')
-            self._ques_len = tf.placeholder(tf.float32,[None,None,self.ques_len],name='ques_len_point')
-            self._ans = tf.placeholder(tf.int32,[None,None,self.ans_len],name='ans_point')
-            self._ans_len = tf.placeholder(tf.float32,[None,None,self.ans_len],name='ans_len_point')
+            self.r_ques = tf.placeholder(tf.int32,[None,None,self.ques_len],name='ques_point')
+            self.r_ques_len = tf.placeholder(tf.float32,[None,None,self.ques_len],name='ques_len_point')
+            self.r_ans = tf.placeholder(tf.int32,[None,None,self.ans_len],name='ans_point')
+            self.r_ans_len = tf.placeholder(tf.float32,[None,None,self.ans_len],name='ans_len_point')
 
-            self._ques_filter_len = tf.tile(tf.expand_dims(self._ans_len,2),[1,1,self.ques_len,1])
-            self._ans_filter_len = tf.tile(tf.expand_dims(self._ques_len,2),[1,1,self.ans_len,1])
+            self._ques_filter_len = tf.tile(tf.expand_dims(self.r_ans_len,2),[1,1,self.ques_len,1])
+            self._ans_filter_len = tf.tile(tf.expand_dims(self.r_ques_len,2),[1,1,self.ans_len,1])
 
-            self._ques_align_len = tf.tile(tf.expand_dims(self._ques_len,3),[1,1,1,self.hidden_dim])
-            self._ans_align_len = tf.tile(tf.expand_dims(self._ans_len,3),[1,1,1,self.hidden_dim])
+            self._ques_align_len = tf.tile(tf.expand_dims(self.r_ques_len,3),[1,1,1,self.hidden_dim])
+            self._ans_align_len = tf.tile(tf.expand_dims(self.r_ans_len,3),[1,1,1,self.hidden_dim])
 
             #self.p_label = tf.placeholder(tf.float32,[None,None])
             self.l_label = tf.placeholder(tf.float32,[None,None])
 
             self.is_train = tf.placeholder(tf.bool)
 
+            self._ques = self.r_ques
+            self._ques_len = self.r_ques_len
+            self._ans = self.r_ans
+            self._ans_len = self.r_ans_len
+
             batch_size, list_size = tf.shape(self._ans)[0], tf.shape(self._ans)[1]
+            self.dc = tf.placeholder(tf.bool)
 
         with tf.name_scope('list_wise'):
             with tf.variable_scope('embedding_layer') as embedding_l:
@@ -128,6 +134,7 @@ class Base_Line():
                 ques_sig = tf.sigmoid(ques_sig)
                 ques_tan = tf.tanh(ques_tan)
                 ques_h = tf.multiply(ques_sig,ques_tan)
+                #ques_h = ques_emb
 
                 ans_sig = sig_den(ans_emb)
                 ans_tan = tan_den(ans_emb)
@@ -136,6 +143,7 @@ class Base_Line():
                 ans_sig = tf.sigmoid(ans_sig)
                 ans_tan = tf.tanh(ans_tan)
                 ans_h = tf.multiply(ans_sig,ans_tan)
+                #ans_h = ans_emb
             with tf.variable_scope('attention_softalign') as att_align_l:
                 ques_att_matrix = self.getAttMat(ques_h,ans_h)
                 ans_att_matrix = self.getAttMat(ans_h,ques_h)
@@ -147,8 +155,8 @@ class Base_Line():
                 ques_aligned = tf.multiply(tf.multiply(ques_align,ques_h),self._ques_align_len)
                 ans_aligned = tf.multiply(tf.multiply(ans_align,ans_h),self._ans_align_len)
             with tf.variable_scope('cnn_feature') as cnn_l:
-                self.cnn_ques = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',name='q_conv_'+str(i)) for i in range(1,6)]
-                self.cnn_ans = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',name='a_conv_'+str(i)) for i in range(1,6)]
+                self.cnn_ques = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',activation=tf.nn.relu,name='q_conv_'+str(i)) for i in range(1,6)]
+                self.cnn_ans = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',activation=tf.nn.relu,name='a_conv_'+str(i)) for i in range(1,6)]
 
                 ques_aligned = tf.reshape(ques_aligned,shape=(-1,self.ques_len,self.hidden_dim))
                 ans_aligned = tf.reshape(ans_aligned,shape=(-1,self.ans_len,self.hidden_dim))
