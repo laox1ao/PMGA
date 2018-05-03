@@ -57,10 +57,10 @@ def get_learning_rate(lr,model_params,dev_map,last_dev_map,epoch):
     else:
         return lr*model_params.lr_shrink
 
-def save_ckpt(saver,sess,global_mark):
+def save_ckpt(saver,sess,global_mark,cv):
     if(not os.path.exists('check_point/'+global_mark)):
         os.makedirs('check_point/'+global_mark)
-    filepath = 'check_point/'+global_mark+'/model_weights'
+    filepath = 'check_point/'+global_mark+'/model_weights_cv'+str(cv)
     saver.save(sess,filepath)
 
 def main(args):
@@ -112,6 +112,10 @@ def main(args):
             model_type = 'syn_ext2'
             model = My_Model(model_params)
             model._build_syn_ext2_listwise()
+        elif model_params.model == 'syn3':
+            model_type = 'syn_ext3'
+            model = My_Model(model_params)
+            model._build_syn_ext3_listwise()
         elif model_params.model == 'att':
             model_type = 'att_ext'
             model = My_Model(model_params)
@@ -143,7 +147,6 @@ def main(args):
             learning_rate_op = tf.placeholder(tf.float32)
             learning_rate = model_params.learning_rate
             loss_op = model.loss_listwise
-            saver = tf.train.Saver()
             if(model_params.optimizer=='adam'):
                 optimizer = tf.train.AdamOptimizer(learning_rate_op)
             elif(model_params.optimizer=='adadelta'):
@@ -151,6 +154,7 @@ def main(args):
             elif(model_params.optimizer=='sgd'):
                 optimizer = tf.train.GradientDescentOptimizer(learning_rate_op)
             train_op = optimizer.minimize(loss_op,global_step=global_step)
+            #saver = tf.train.Saver()
             last_dev_mAp = 0.0
             sess.run(tf.global_variables_initializer())
             dc_flag = False
@@ -162,7 +166,7 @@ def main(args):
                 #train_data = dg.data_listwise_clean_internal_sample(train_file,answer_file)
                 if model_params.task == 'wiki':
                     train_data = dg_.wikiQaGenerate(wiki_train_file)
-                else:
+                elif model_params.task == 'trec':
                     train_data = dg_.trecQaGenerate(trec_train_file)
                 print("learnig_rate---> %s" % learning_rate)
                 train_data_ = zip(*train_data)
@@ -213,7 +217,7 @@ def main(args):
                     dev_test_map = test_mAp
                     dev_test_mrr = test_mRr
                     best_dev_epoch = i
-                    save_ckpt(saver,sess,global_mark)
+                    #save_ckpt(saver,sess,global_mark,c)
                 if(test_mAp>best_test_map):
                     best_test_map = test_mAp
                     best_test_mrr = test_mRr
