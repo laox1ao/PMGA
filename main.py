@@ -73,7 +73,7 @@ def main(args):
 
         ######task n data
         if model_params.task == 'wiki':
-            model_params.ques_len = 25
+            model_params.ques_len = 26
             model_params.ans_len = 90
             model_params.random_size=model_params.list_size=15
             dg = DG(model_params)
@@ -183,7 +183,7 @@ def main(args):
                     #batch_p_l = train_data[4][j*model_params.batch_size:(j+1)*model_params.batch_size,:,:]
                     batch_l_l = train_data[4][j*model_params.batch_size:(j+1)*model_params.batch_size,:]
 
-                    loss_b, _ = sess.run([loss_op,train_op], feed_dict={model.r_ques:batch_ques,
+                    _, loss_b = sess.run([train_op,loss_op], feed_dict={model.r_ques:batch_ques,
                                                                       model.r_ans:batch_ans,
                                                                       model.r_ques_len:batch_ques_l,
                                                                       model.r_ans_len:batch_ans_l,
