@@ -293,8 +293,8 @@ class My_Model():
                 self.ques_h = ques_h = tf.multiply(ques_h,self._ques_align_len)
                 ans_h = tf.multiply(ans_h,self._ans_align_len)
 
-                self.ques_syn = ques_syn = self.convXd_listwise(q_syn_extractor,ques_h,self._ques_align_len,1)
-                ans_syn = self.convXd_listwise(a_syn_extractor,ans_h,self._ans_align_len,1)
+                self.ques_syn = ques_syn = self.convXd_listwise(q_syn_extractor,ques_h,self._ques_align_len)
+                ans_syn = self.convXd_listwise(a_syn_extractor,ans_h,self._ans_align_len)
                 print('ques_syn:',ques_syn.shape)
 
                 q_a_syn = tf.concat([ques_syn,ans_syn],axis=-1)
@@ -427,12 +427,16 @@ class My_Model():
                 #a_syn_extractor = [tf.layers.Conv2D(1,(i,1),strides=(i,1),padding='valid',kernel_initializer=tf.initializers.ones,trainable=False,name='a_extrator_'+str(i)) for i in a_kernel_size]
                 q_syn_extractor = [tf.layers.Conv2D(1,(i,1),strides=(1,1),padding='same',kernel_initializer=tf.initializers.ones,trainable=False,name='q_extrator_'+str(i)) for i in q_kernel_size]
                 a_syn_extractor = [tf.layers.Conv2D(1,(i,1),strides=(1,1),padding='same',kernel_initializer=tf.initializers.ones,trainable=False,name='a_extrator_'+str(i)) for i in a_kernel_size]
+                #q_syn_extractor = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',activation=tf.nn.relu,name='q_extrator_'+str(i)) for i in q_kernel_size]
+                #a_syn_extractor = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',activation=tf.nn.relu,name='q_extrator_'+str(i)) for i in a_kernel_size]
 
                 self.ques_h = ques_h = tf.multiply(ques_h,self._ques_align_len)
                 ans_h = tf.multiply(ans_h,self._ans_align_len)
 
                 self.ques_syn = ques_syn = self.local_summarize(self,q_syn_extractor,tf.expand_dims(ques_h,3),self.ques_len,q_kernel_size,-1,self._ques_align_len)
                 ans_syn = self.local_summarize(self,a_syn_extractor,tf.expand_dims(ans_h,3),self.ans_len,a_kernel_size,-1,self._ans_align_len)
+                #self.ques_syn = ques_syn = self.convXd_listwise(q_syn_extractor,ques_h,self._ques_align_len)
+                #ans_syn = self.convXd_listwise(a_syn_extractor,ans_h,self._ans_align_len)
                 print('ans_syn: ',ans_syn.shape)
 
                 #ques_syn = tf.layers.dense(ques_syn,self.hidden_dim,activation=tf.tanh,name='q_syn_dense')
@@ -453,8 +457,8 @@ class My_Model():
 
             with tf.variable_scope('attention_softalign') as att_align_l:
 
-                #ques_h = tf.concat([ques_h,ques_syn],axis=-1)
-                #ans_h = tf.concat([ans_h,ans_syn],axis=-1)
+                #ques_h = tf.concat([ques_h,ques_syn],axis=1)
+                #ans_h = tf.concat([ans_h,ans_syn],axis=1)
 
                 ques_att_matrix = self.getAttMat(ques_h,ans_h)
                 ans_att_matrix = self.getAttMat(ans_h,ques_h)
@@ -462,12 +466,16 @@ class My_Model():
                 ans_syn_matrix = self.getAttMat(ans_syn,ques_syn)
                 print('ques_att_matrix:',ques_att_matrix.shape)
                 print('ques_syn_matrix:',ques_syn_matrix.shape)
+                #double_ques_filter_len = tf.tile(self._ques_filter_len,[1,2,2])
+                #double_ans_filter_len = tf.tile(self._ans_filter_len,[1,2,2])
+                #double_ques_align_len = tf.tile(self._ques_align_len,[1,2,1])
+                #double_ans_align_len = tf.tile(self._ans_align_len,[1,2,1])
                 ques_align = self.getAlign(ans_h,ques_att_matrix,self._ques_filter_len)
                 ans_align = self.getAlign(ques_h,ans_att_matrix,self._ans_filter_len)
-                ques_syn_align = self.getAlign(ans_syn,ques_att_matrix,self._ques_filter_len)
-                ans_syn_align = self.getAlign(ques_syn,ans_att_matrix,self._ans_filter_len)
+                ques_syn_align = self.getAlign(ans_syn,ques_syn_matrix,self._ques_filter_len)
+                ans_syn_align = self.getAlign(ques_syn,ans_syn_matrix,self._ans_filter_len)
                 print('ques_align:',ques_align.shape)
-                print('ques_syn_align:',ques_syn_align.shape)
+                #print('ques_syn_align:',ques_syn_align.shape)
 
                 ques_aligned = tf.multiply(tf.multiply(ques_align,ques_h),self._ques_align_len)
                 ans_aligned = tf.multiply(tf.multiply(ans_align,ans_h),self._ans_align_len)
@@ -476,13 +484,13 @@ class My_Model():
             with tf.variable_scope('cnn_feature') as cnn_l:
                 self.cnn_ques = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',activation=tf.nn.relu,name='q_conv_'+str(i)) for i in range(1,6)]
                 self.cnn_ans = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',activation=tf.nn.relu,name='a_conv_'+str(i)) for i in range(1,6)]
-                self.cnn_syn_ques = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',activation=tf.nn.relu,name='q_syn_conv_'+str(i)) for i in range(1,6)]
-                self.cnn_syn_ans = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',activation=tf.nn.relu,name='a_syn_conv_'+str(i)) for i in range(1,6)]
+                #self.cnn_syn_ques = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',activation=tf.nn.relu,name='q_syn_conv_'+str(i)) for i in range(1,6)]
+                #self.cnn_syn_ans = [tf.layers.Conv1D(self.hidden_dim,i,padding='same',activation=tf.nn.relu,name='a_syn_conv_'+str(i)) for i in range(1,6)]
 
                 ques_cnn = self.convXd_listwise(self.cnn_ques,ques_aligned,self._ques_align_len,1)
                 ans_cnn = self.convXd_listwise(self.cnn_ans,ans_aligned,self._ans_align_len,1)
-                ques_syn_cnn = self.convXd_listwise(self.cnn_syn_ques,ques_syn_aligned,self._ques_align_len,1)
-                ans_syn_cnn = self.convXd_listwise(self.cnn_syn_ans,ans_syn_aligned,self._ans_align_len,1)
+                ques_syn_cnn = self.convXd_listwise(self.cnn_ques,ques_syn_aligned,self._ques_align_len,1)
+                ans_syn_cnn = self.convXd_listwise(self.cnn_ans,ans_syn_aligned,self._ans_align_len,1)
 
                 #def _conv1d_listwise(step,sent_cnn,sent_aligned,signal):
                 #    conv1dfn = self.cnn_ques if tf.equal(signal,tf.constant(1)) is not None else self.cnn_ans
@@ -511,12 +519,16 @@ class My_Model():
                 ans_o1 = tf.layers.dense(ans_cnn,self.hidden_dim,activation=tf.tanh,name='a_out1')
                 #ques_syn_cnn = tf.layers.dropout(ques_syn_cnn,rate=0.5,training=self.is_train)
                 #ans_syn_cnn = tf.layers.dropout(ans_syn_cnn,rate=0.5,training=self.is_train)
-                ques_syn_o1 = tf.layers.dense(ques_syn_cnn,self.hidden_dim,activation=tf.tanh,name='q_s_out1')
-                ans_syn_o1 = tf.layers.dense(ans_syn_cnn,self.hidden_dim,activation=tf.tanh,name='a_s_out1')
+                #ques_syn_o1 = tf.layers.dense(ques_syn_cnn,self.hidden_dim,activation=tf.tanh,name='q_s_out1')
+                #ans_syn_o1 = tf.layers.dense(ans_syn_cnn,self.hidden_dim,activation=tf.tanh,name='a_s_out1')
+                q_a_syn = tf.concat([ques_syn_cnn,ans_syn_cnn],axis=-1)
+                q_a_syn = tf.layers.dropout(q_a_syn,rate=0.5,training=self.is_train)
+                q_a_syn = tf.layers.dense(q_a_syn,self.hidden_dim,activation=tf.nn.tanh,name='a_s_out1')
 
-                #finalo1 = tf.concat([ques_o1,q_a_syn,ans_o1],axis=-1)
+                #finalo1 = tf.concat([ques_o1,ans_o1],axis=-1)
+                finalo1 = tf.concat([ques_o1,q_a_syn,ans_o1],axis=-1)
                 #finalo1 = tf.concat([ques_syn_o1,ans_syn_o1],axis=-1)
-                finalo1 = tf.concat([ques_o1,ans_o1,ques_syn_o1,ans_syn_o1],axis=-1)
+                #finalo1 = tf.concat([ques_o1,ans_o1,ques_syn_o1,ans_syn_o1],axis=-1)
 
                 finalo2 = tf.layers.dense(finalo1,self.hidden_dim,activation=tf.tanh,name='finalout')
                 self.score = tf.layers.dense(finalo2,1,name='score')
@@ -800,7 +812,7 @@ class My_Model():
             #print(tf.tile(tf.expand_dims(localfn[2](sent),2),[1,1,kernel_size[2],1,1]).shape)
             #print(tf.tile(tf.expand_dims(localfn[3](sent),2),[1,1,kernel_size[3],1,1]).shape)
             #local_out = tf.concat([tf.reshape(tf.tile(tf.expand_dims(localfn[i](sent)/float(kernel_size[i]),2),[1,1,kernel_size[i],1,1]),(-1,sentl,self.hidden_dim))*sent_len for i in range(len(localfn))],axis=merge_dim)
-            print((tf.squeeze(localfn[0](sent)/float(kernel_size[0]),-1)*sent_len).shape)
+            #print((tf.squeeze(localfn[0](sent)/float(kernel_size[0]),-1)*sent_len).shape)
             local_out = tf.concat([tf.squeeze(localfn[i](sent)/float(kernel_size[i]),-1)*sent_len for i in range(len(localfn))],axis=merge_dim)
         print(local_out.shape)
         return local_out

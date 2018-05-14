@@ -73,7 +73,7 @@ def main(args):
 
         ######task n data
         if model_params.task == 'wiki':
-            model_params.ques_len = 26
+            model_params.ques_len = 25
             model_params.ans_len = 90
             model_params.random_size=model_params.list_size=15
             dg = DG(model_params)
