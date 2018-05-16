@@ -73,7 +73,7 @@ def main(args):
 
         ######task n data
         if model_params.task == 'wiki':
-            model_params.ques_len = 25
+            model_params.ques_len = 24
             model_params.ans_len = 90
             model_params.random_size=model_params.list_size=15
             dg = DG(model_params)
@@ -116,6 +116,14 @@ def main(args):
             model_type = 'syn_ext3'
             model = My_Model(model_params)
             model._build_syn_ext3_listwise()
+        elif model_params.model == 'syn4':
+            model_type = 'syn_ext4'
+            model = My_Model(model_params)
+            model._build_syn_ext4_listwise()
+        elif model_params.model == 'syn5':
+            model_type = 'syn_ext5'
+            model = My_Model(model_params)
+            model._build_syn_ext5_listwise()
         elif model_params.model == 'att':
             model_type = 'att_ext'
             model = My_Model(model_params)
