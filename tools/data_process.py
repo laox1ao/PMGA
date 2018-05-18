@@ -12,52 +12,52 @@ ModelParam = namedtuple("ModelParam","hidden_dim,enc_timesteps,dec_timesteps,bat
 
 UNKNOWN_TOKEN = '<UNK>'
 PAD_TOKEN = '<PAD>'
-#class Vocab(object):
-#    def __init__(self, vocab_file, max_size):
-#        self._word_to_id = {}
-#        self._id_to_word = {}
-#        self._count = 0
-#        before_list = [PAD_TOKEN]
-#        for word in before_list:
-#                self.CreateWord(word)
-#        with open(vocab_file, 'r') as vocab_f:
-#            for line in vocab_f:
-#                pieces = line.split()
-#                if len(pieces) != 2:
-#                    sys.stderr.write('Bad line: %s\n' % line)
-#                    continue
-#                if pieces[1] in self._word_to_id:
-#                    raise ValueError('Duplicated word: %s.' % pieces[1])
-#                self._word_to_id[pieces[1]] = self._count
-#                self._id_to_word[self._count] = pieces[1]
-#                self._count += 1
-#                if self._count > max_size-1:
-#                    sys.stderr.write('Too many words: >%d.' % max_size)
-#                        break
-#    def WordToId(self, word):
-#        if word not in self._word_to_id:
-#            return self._word_to_id[UNKNOWN_TOKEN]
-#        return self._word_to_id[word]
-#
-#    def IdToWord(self, word_id):
-#        if word_id not in self._id_to_word:
-#            raise ValueError('id not found in vocab: %d.' % word_id)
-#        return self._id_to_word[word_id]
-#
-#    def NumIds(self):
-#        return self._count
-#
-#    def CreateWord(self,word):
-#        if word not in self._word_to_id:
-#            self._word_to_id[word] = self._count
-#            self._id_to_word[self._count] = word
-#            self._count += 1
-#    def Revert(self,indices):
-#        vocab = self._id_to_word
-#        return [vocab.get(i, 'X') for i in indices]
-#    def Encode(self,indices):
-#        vocab = self._word_to_id
-#        return [vocab.get(i, 'nonum') for i in indices]
+class Vocab(object):
+    def __init__(self, vocab_file, max_size):
+        self._word_to_id = {}
+        self._id_to_word = {}
+        self._count = 0
+        before_list = [PAD_TOKEN]
+        for word in before_list:
+                self.CreateWord(word)
+        with open(vocab_file, 'r') as vocab_f:
+            for line in vocab_f:
+                pieces = line.split()
+                if len(pieces) != 2:
+                    sys.stderr.write('Bad line: %s\n' % line)
+                    continue
+                if pieces[1] in self._word_to_id:
+                    raise ValueError('Duplicated word: %s.' % pieces[1])
+                self._word_to_id[pieces[1]] = self._count
+                self._id_to_word[self._count] = pieces[1]
+                self._count += 1
+                if self._count > max_size-1:
+                    sys.stderr.write('Too many words: >%d.' % max_size)
+                    break
+    def WordToId(self, word):
+        if word not in self._word_to_id:
+            return self._word_to_id[UNKNOWN_TOKEN]
+        return self._word_to_id[word]
+
+    def IdToWord(self, word_id):
+        if word_id not in self._id_to_word:
+            raise ValueError('id not found in vocab: %d.' % word_id)
+        return self._id_to_word[word_id]
+
+    def NumIds(self):
+        return self._count
+
+    def CreateWord(self,word):
+        if word not in self._word_to_id:
+            self._word_to_id[word] = self._count
+            self._id_to_word[self._count] = word
+            self._count += 1
+    def Revert(self,indices):
+        vocab = self._id_to_word
+        return [vocab.get(i, 'X') for i in indices]
+    def Encode(self,indices):
+        vocab = self._word_to_id
+        return [vocab.get(i, 'nonum') for i in indices]
 
 
 class DataGenerator(object):

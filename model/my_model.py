@@ -518,8 +518,8 @@ class My_Model():
                 ques_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='q_dense')
                 ans_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='a_dense')
 
-                ques_syn_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='q_syn_dense')
-                ans_syn_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='a_syn_dense')
+                #ques_syn_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='q_syn_dense')
+                #ans_syn_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='a_syn_dense')
 
                 ques_o1 = ques_den(ques_cnn)
                 ans_o1 = ans_den(ans_cnn)
@@ -698,8 +698,8 @@ class My_Model():
                 ques_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='q_dense')
                 ans_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='a_dense')
 
-                ques_syn_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='q_syn_dense')
-                ans_syn_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='a_syn_dense')
+                #ques_syn_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='q_syn_dense')
+                #ans_syn_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='a_syn_dense')
 
                 ques_o1 = ques_den(ques_cnn)
                 ans_o1 = ans_den(ans_cnn)
@@ -878,8 +878,8 @@ class My_Model():
                 ques_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='q_dense')
                 ans_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='a_dense')
 
-                ques_syn_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='q_syn_dense')
-                ans_syn_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='a_syn_dense')
+                #ques_syn_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='q_syn_dense')
+                #ans_syn_den = tf.layers.Dense(self.hidden_dim,activation=tf.tanh,name='a_syn_dense')
 
                 ques_o1 = ques_den(ques_cnn)
                 ans_o1 = ans_den(ans_cnn)
