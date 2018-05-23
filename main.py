@@ -124,6 +124,10 @@ def main(args):
             model_type = 'syn_ext5'
             model = My_Model(model_params)
             model._build_syn_ext5_listwise()
+        elif model_params.model == 'syn6':
+            model_type = 'syn_ext6'
+            model = My_Model(model_params)
+            model._build_syn_ext6_listwise()
         elif model_params.model == 'att':
             model_type = 'att_ext'
             model = My_Model(model_params)
@@ -162,7 +166,7 @@ def main(args):
             elif(model_params.optimizer=='sgd'):
                 optimizer = tf.train.GradientDescentOptimizer(learning_rate_op)
             train_op = optimizer.minimize(loss_op,global_step=global_step)
-            #saver = tf.train.Saver()
+            saver = tf.train.Saver()
             last_dev_mAp = 0.0
             sess.run(tf.global_variables_initializer())
             dc_flag = False
@@ -225,7 +229,7 @@ def main(args):
                     dev_test_map = test_mAp
                     dev_test_mrr = test_mRr
                     best_dev_epoch = i
-                    #save_ckpt(saver,sess,global_mark,c)
+                    save_ckpt(saver,sess,global_mark,c)
                 if(test_mAp>best_test_map):
                     best_test_map = test_mAp
                     best_test_mrr = test_mRr
